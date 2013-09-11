@@ -57,11 +57,11 @@ from Tkinter import *
 # Main function for the Excel to NGDS Feature ArcGIS Tool
 def main(argv=None):
     root = Tkinter.Tk()
-    root.title("Excel to LAS Converter")
+    root.title("Well Log Data Converter ")
     root.minsize(0, 0)
     
     # Create the frame for the conversion option buttons
-    labelframe1 = LabelFrame(root, text = "Conversion Options")
+    labelframe1 = LabelFrame(root, text = "Excel to LAS 2.0 Conversion Options")
     labelframe1.pack(fill = "both", expand = "yes")
     # Create a frame for both buttons
     bframe = Frame(labelframe1)
@@ -70,13 +70,13 @@ def main(argv=None):
     b1frame = Frame(bframe, bd = 5)
     b1frame.pack(side = LEFT)
     # Create the 1st button
-    B = Tkinter.Button(b1frame, text = "Convert Single Excel File", command = ConvertSingleFile)
+    B = Tkinter.Button(b1frame, text = "Convert Single Excel File to LAS 2.0", command = ConvertSingleFile)
     B.pack()
     # Create a frame for the 2nd button
     b2frame = Frame(bframe, bd = 5)
     b2frame.pack(side = LEFT)
     # Create the 2nd button
-    B2 = Tkinter.Button(b2frame, text = "Convert All Excel Files in a Folder", command = ConvertFolder)
+    B2 = Tkinter.Button(b2frame, text = "Convert All Excel Files in a Folder to LAS 2.0", command = ConvertFolder)
     B2.pack()
     
     # Create the frame for the messages list
