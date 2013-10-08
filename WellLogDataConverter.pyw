@@ -46,6 +46,7 @@ The following assumptions are made about the ~A Excel worksheet:
     
 '''
 import os, glob
+import datetime
 try:
     import xlrd
 except:
@@ -54,10 +55,10 @@ import Tkinter, tkFileDialog
 from Tkinter import *
 
 
-# Main function for the Excel to NGDS Feature ArcGIS Tool
+# Main function for the Well Log Data Converter Tool
 def main(argv=None):
     root = Tkinter.Tk()
-    root.title("Well Log Data Converter ")
+    root.title("Well Log Data Converter")
     root.minsize(0, 0)
     
     # Create the frame for the conversion option buttons
@@ -281,6 +282,7 @@ def GetWellInfo(wb, shtName):
     # Read the first and second columns of the Excel file
     mnems = sht.col_values(0)
     values = sht.col_values(1)
+    types = sht.col_types(1)
     
     # Required fields
     desc = ["START DEPTH", "STOP DEPTH", "STEP", "NULL VALUE", "COMPANY", "WELL", "FIELD", "LOCATION", "COUNTY", "STATE", "COUNTRY", "SERVICE COMPANY", "DATE", "UNIQUE WELL ID", "API NUMBER"]
@@ -309,7 +311,14 @@ def GetWellInfo(wb, shtName):
     rowsOutputed = 1
     
     # For each item in the list representing the first column
-    for i in range(dataStartRow, len(mnems)):
+    for i in range(dataStartRow, len(mnems)):  
+        
+        # If the type of the cell is 3 a date type is indicated
+        if types[i] == 3:
+            values[i] = ConvertToDate(values[i], wb)
+            if values[i] == -1:
+                Message("Unrecognized date in row " + str(i + 1) + " of the " + shtName + ". Terminating.")
+                raise Exception
   
         # Make sure all of the characters that will be in the LAS are ascii
         try:
@@ -328,7 +337,7 @@ def GetWellInfo(wb, shtName):
         if values[i] == "" and i < 15 + dataStartRow:
             Message("Row " + str(i + 1) + " must have a value in the " + shtName + " sheet.")
             raise Exception
-        
+
         # Output the fields
         output += mnems[i]
         
@@ -588,6 +597,22 @@ def GetAsciiLogData(wb, shtName):
         raise Exception
 
     return output
+
+# Convert dates (stored in Excel as floats) back to dates
+def ConvertToDate(val, wb):
+
+    try:
+        if val >= 61:
+            year, month, day, hour, minute, second = xlrd.xldate_as_tuple(val, wb.datemode)
+            date = datetime.datetime(year, month, day, hour, minute, second)
+            # Excel treats the first 60 days of 1900 as ambiguous (see Microsoft documentation)
+            # Assume the dates are what is indicated in the cell
+        else:
+            date = datetime.datetime(1900, 1, 1, 0, 0, 0) + datetime.timedelta(days = val - 1)
+    except:
+        return -1
+    
+    return date
 
 if __name__ == "__main__":
     main()
