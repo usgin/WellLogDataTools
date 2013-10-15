@@ -1,12 +1,15 @@
 '''
+Well Log Data Tools
 Created on Jun 12, 2013
 
 @author: Jessica Good Alisdairi, AZGS jalisdairi@azgs.az.gov
 
-This script takes data inputed into the BoreholeLASLogData Content Model
-and creates a LAS 2.0 file.
+This python script offers two different conversions for well log data:
+1) Conversion from a BoreholeLASLogData.xls model to a LAS 2.0 file. 
+2) Conversion from a LAS 2.0 file to an entry in the WellLog Content Model.
 
-The following assumptions are made about the Excel workbook being read:
+The BoreholeLASLogData.xls model to a LAS 2.0 file converter 
+makes the following assumptions about the inputted Excel workbook:
 
 The workbook tabs are named such that the tab name for: 
     ~Version Information Section     starts with     ~V
@@ -24,7 +27,7 @@ The following assumptions are made about the ~W Excel worksheet:
     - The 1st column contains the header "LAS Mnemonic" or "Mnemonic" in any row on the sheet and the data follows.
     - The description for values in the 1st column are, in this exact order: "START DEPTH", "STOP DEPTH", "STEP", "NULL VALUE", 
     "COMPANY", "WELL", "FIELD", "LOCATION", "COUNTY", "STATE", "COUNTRY", "SERVICE COMPANY", "DATE", "UNIQUE WELL ID", 
-    "API NUMBER" "LOG URI", "LOG TYPE", "WELL TYPE", "LAT DEGREE", "LONG DEGREE", "SRS", "LOCATION UNCERTAINTY", "TOTAL DEPTH", 
+    "API NUMBER", "LOG URI", "LOG TYPE", "WELL TYPE", "LAT DEGREE", "LONG DEGREE", "SRS", "LOCATION UNCERTAINTY", "TOTAL DEPTH", 
     "ELEVATION GL", "LINK", "SOURCE", "NOTE"
 
 The following assumptions are made about the ~C Excel worksheet:
@@ -45,47 +48,56 @@ The following assumptions are made about the ~A Excel worksheet:
     - The data starts in the 4th row.
     
 '''
-import os, glob
+
+import os, glob, re
 import datetime
 try:
     import xlrd
 except:
     print "Import of XLRD module failed.\nThe XLRD module can be downloaded from: http://pypi.python.org/pypi/xlrd"
+try:
+    import xlutils
+except:
+    print "Import of XLWT module failed.\nThe XLWT module can be downloaded from: http://pypi.python.org/pypi/xlutils"    
+from xlutils.copy import copy
+ 
 import Tkinter, tkFileDialog
 from Tkinter import *
 
-
 # Main function for the Well Log Data Converter Tool
+# Set up the user interface
 def main(argv=None):
     root = Tkinter.Tk()
     root.title("Well Log Data Converter")
     root.minsize(0, 0)
+
+    # Create the frame for the conversion type radio buttons
+    labelframe = LabelFrame(root, text = "Conversion Type")
+    labelframe.pack(fill = "both", expand = "yes")
+    global cType, cOpt
+    cType = IntVar()
+    cOpt = IntVar()
+    R1 = Radiobutton(labelframe, text = "BoreholeLASLogData Model  --->  LAS 2.0 text file", variable = cType, value = 1)
+    R1.select()
+    R1.pack(anchor = W)
+    R2 = Radiobutton(labelframe, text = "LAS 2.0 text file  --->  WellLog Content Model", variable = cType, value = 2)
+    R2.pack(anchor = W)
     
-    # Create the frame for the conversion option buttons
-    labelframe1 = LabelFrame(root, text = "Excel to LAS 2.0 Conversion Options")
-    labelframe1.pack(fill = "both", expand = "yes")
-    # Create a frame for both buttons
-    bframe = Frame(labelframe1)
-    bframe.pack()
-    # Create a frame for the 1st button
-    b1frame = Frame(bframe, bd = 5)
-    b1frame.pack(side = LEFT)
-    # Create the 1st button
-    B = Tkinter.Button(b1frame, text = "Convert Single Excel File to LAS 2.0", command = ConvertSingleFile)
+    # Create the frame for the conversion option radio buttons
+    labelframe = LabelFrame(root, text = "Conversion Options")
+    labelframe.pack(fill = "both", expand = "yes")
+    R3 = Radiobutton(labelframe, text = "Convert a Single File", variable = cOpt, value = 1)
+    R3.select()
+    R3.pack(anchor = W)
+    R4 = Radiobutton(labelframe, text = "Convert All Files in a Folder", variable = cOpt, value = 2)
+    R4.pack(anchor = W)
+    B = Tkinter.Button(root, text = "Start Conversion!", command = GetFiles)
     B.pack()
-    # Create a frame for the 2nd button
-    b2frame = Frame(bframe, bd = 5)
-    b2frame.pack(side = LEFT)
-    # Create the 2nd button
-    B2 = Tkinter.Button(b2frame, text = "Convert All Excel Files in a Folder to LAS 2.0", command = ConvertFolder)
-    B2.pack()
-    
+
     # Create the frame for the messages list
     global textFrame
     msgFrame = LabelFrame(root, text="Messages")
-    # Create the frame for the text
     textFrame = Tkinter.Text(msgFrame, height = 30)
-    # Create the scrollbar
     yscrollbar = Scrollbar(msgFrame)
     yscrollbar.pack(side = RIGHT, fill = Y)
     textFrame.pack(side = LEFT, fill = Y)
@@ -93,67 +105,148 @@ def main(argv=None):
     textFrame.config(yscrollcommand = yscrollbar.set)
     msgFrame.pack(fill = X, expand = "yes")
 
-    # Create the frame for the Exit button
+    # Create the frame for the exit button
     b3frame = Frame(root, bd = 5)
     b3frame.pack()
-    # Create the Exit button
     B3 = Tkinter.Button(b3frame, text = "Exit", command = ExitConvert)
     B3.pack()
     
     root.mainloop()
     return
-   
-# Prompt for file to convert
-def ConvertSingleFile():
+
+# Get the files to be converted from the user
+def GetFiles():
     # Clear the text frame
     textFrame.delete("1.0", END)
     
-    xlFile = tkFileDialog.askopenfilename(filetypes=[("All Files","*"), ("Excel Files","*.xlsx;*.xls")])
-    # If cancel was pressed
-    if xlFile == "":
-        return
+    # If converting a single file
+    if cOpt.get() == 1:
+        # If converting from a BoreholeLASLogData Model to a LAS 2.0 file get the Excel file
+        if cType.get() == 1:
+            cFile = tkFileDialog.askopenfilename(filetypes=[("Excel Files","*.xlsx;*.xls")])
+        # If converting from a LAS 2.0 file to the WellLog Content Model get the LAS file
+        else:
+            cFile = tkFileDialog.askopenfilename(filetypes=[("LAS Files","*.las")])
+        # If cancel was pressed
+        if cFile == "":
+            return
+        cFiles = []
+        cFiles.append(cFile)
+        
+    # If converting all files in a folder
+    else:
+        path = tkFileDialog.askdirectory()
+        # If cancel was pressed 
+        if path == "":
+            return
+        
+        # If converting from a BoreholeLASLogData Model to a LAS 2.0 file get the Excel files
+        if cType.get() == 1:
+            cFiles = glob.glob(path + "/*.xls") + glob.glob(path + "/*.xlsx")
+        # If converting from a LAS 2.0 file to the WellLog Content Model get the LAS files
+        else:
+            cFiles = glob.glob(path + "/*.las")
+        
+        # Check for duplicate file names (not including the file extension)
+        if DupFileNames(cFiles):
+            return
   
-    xlFiles = []
-    xlFiles.append(xlFile)
-    Convert(xlFiles)
+    Convert(cFiles)    
     return
 
-# Prompt for folder which holds all the Excel files to convert 
-def ConvertFolder():
-    # Clear the text frame
-    textFrame.delete("1.0", END)
-    
-    global xlBaseFile
-    path = tkFileDialog.askdirectory()
-    # If cancel was pressed
-    if path == "":
-        return
-
-    # Find all Excel files in the folder
-    xls = glob.glob(path + "/*.xls")
-    xlsx = glob.glob(path + "/*.xlsx")
-    xlFiles = xls + xlsx
+# Check for duplicate file names (not including the file extension)
+def DupFileNames(files):
 
     # Make a list of the file names
-    xlFileNames = []
-    for xlFile in xlFiles:
-        xlTempBaseFile = os.path.basename(xlFile)
-        xlTempFileName = os.path.splitext(xlTempBaseFile)[0]
-        xlFileNames.append(xlTempFileName)
+    fileNames = []
+    for f in files:
+        tempBaseFile = os.path.basename(f)
+        tempFileName = os.path.splitext(tempBaseFile)[0]
+        fileNames.append(tempFileName)
     
-    # Find any duplicate file names
-    if len(xlFileNames) != len(set(xlFileNames)):
+    # Find any duplicate file names (this could happen if extensions are different)
+    if len(fileNames) != len(set(fileNames)):
         dupes = []
-        for i in xlFileNames:
-            if xlFileNames.count(i) > 1:
+        for i in fileNames:
+            if fileNames.count(i) > 1:
                 if i not in dupes:
                     dupes.append(i)
-        xlBaseFile = ', '.join(dupes)
+        baseFile = ', '.join(dupes)
+        
+        # Duplicate file names were found
         if len(dupes) == 1:
-            Message("is used more than once as a file name. Make sure all file names are unique.")
+            Message(baseFile + " is used more than once as a file name. Make sure all file names are unique.")
+            return True
         else:
-            Message("are used more than once as file names. Make sure all file names are unique.")
-    Convert(xlFiles)
+            Message(baseFile + " are used more than once as file names. Make sure all file names are unique.")
+            return True
+
+    # No duplicate file names were found
+    return False
+
+# Start the conversion
+def Convert(files):
+
+    # If converting from a LAS 2.0 file to the WellLog Content Model open the WellLogsTemplate file
+    if cType.get() == 2:
+        try:
+            # Open the template and preserve the formatting of the file
+            # !!!! The colors are not slightly different though !!!
+            wbk = xlrd.open_workbook("WellLogsTemplate.xls", formatting_info = True)
+            # Get the field names from the first row of the first sheet
+            fields = wbk.sheet_by_index(0).row_values(0)
+            # Determine the first empty row by counting the number of rows
+            firstEmptyRow = wbk.sheet_by_index(0).nrows
+            w = copy(wbk)
+            sht = w.get_sheet(0)
+        except:
+            Message("Error: Can't find WellLogsTemplate.xls")
+            Message("A copy of the Well Logs Content Model must be in the same folder as this converter.")
+            return
+    
+    # For each inputted file            
+    for f in files:
+        baseFile = os.path.basename(f)
+        fileName = os.path.splitext(baseFile)[0]
+        path = os.path.splitext(os.path.dirname(f))[0]
+
+        output = ""
+        # If converting from a BoreholeLASLogData Model to a LAS 2.0 file
+        if cType.get() == 1:
+            # Create output file
+            lasFile = path + '\\' + fileName + '.las'      
+            fileOut = open(lasFile, 'w')                     
+            fileOut.write(output)
+            
+            # Read the BoreholeLASLogData Model and convert
+            output = ReadBoreholeLASLogData(f, output)
+            
+            # Write the output file
+            fileOut.write(output)
+            fileOut.close()
+            if output == "":
+                os.remove(lasFile)
+        
+        # If converting from a LAS 2.0 file to the WellLog Content Model
+        else:
+            # Read the LAS file and convert
+            output = ReadLAS(f, output)
+            
+            # Write the output
+            if output != "":              
+                WriteWellLogsCM(output, fields, firstEmptyRow, sht)
+                firstEmptyRow += 1
+                Message(baseFile + ": Converted successfully.")
+     
+    # If converting from a LAS 2.0 file to the WellLog Content Model           
+    if cType.get() == 2:
+        try:
+            # Save the output file
+            w.save(path + "\\" + "WellLogs.xls")
+            Message("Saved as WellLogs.xls in " + path)
+        except:
+            Message("Unable to Save WellLogs.xls. If it is already open, close it first.")
+         
     return
 
 # Exit the program
@@ -161,36 +254,14 @@ def ExitConvert():
     exit()
     return
 
-# Start the conversion
-def Convert(xlFiles):
-    global xlBaseFile
-    for xlFile in xlFiles:
-        xlBaseFile = os.path.basename(xlFile)
-        xlFileName = os.path.splitext(xlBaseFile)[0]
-        path = os.path.splitext(os.path.dirname(xlFile))[0]
-        lasFile = path + '\\' + xlFileName + '.las'      
-        fileOut = open(lasFile, 'w')                     # Create output file
-        output = ""
-        fileOut.write(output)
-        output = ReadExcel(xlFile, output)
-        fileOut.write(output)
-        fileOut.close()
-        if output == "":
-            os.remove(lasFile)    
-    return
-
-# Message Box
-def Message(message):
-    textFrame.insert(END, xlBaseFile + ": "+ message + "\n")
-    return
-
-# Read the Excel file
-def ReadExcel(inExcel, output):
+# Read the BoreholeLASLogData Excel file
+def ReadBoreholeLASLogData(inExcel, output):
     try:
         try:
             wb = xlrd.open_workbook(inExcel)
+            wb._path = os.path.basename(inExcel)
         except:
-            Message("Unable to open workbook. Terminating.")
+            Message("Error: Unable to open workbook. Terminating.")
             raise Exception
         
         sheets = [sht.name for sht in wb.sheets()]
@@ -217,7 +288,7 @@ def ReadExcel(inExcel, output):
             if value is None:
                 # Sheets ~P and ~O are optional
                 if key != "~P" and key != "~O":
-                    Message("Can't find the sheet starting with " + key + ". Terminating.")
+                    Message(wb._path + ": Can't find the sheet starting with " + key + ". Terminating.")
                     raise Exception
         
         output += GetVersionInfo(wb, shts["~V"])
@@ -229,10 +300,10 @@ def ReadExcel(inExcel, output):
             output += GetOtherInfo(wb, shts["~O"])
         output += GetAsciiLogData(wb, shts["~A"])
     
-        Message("Conversion Successful")
+        Message(wb._path + ": Conversion Successful")
         
     except Exception:
-        Message("Conversion Failed")
+        Message(wb._path + ": Conversion Failed")
         output = ""
     
     return output
@@ -258,13 +329,13 @@ def GetVersionInfo(wb, shtName):
         try:
             versInfo[i] = str(versInfo[i]).encode('ascii')
         except:
-            Message("Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
+            Message(wb._path + ": Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
             raise Exception  
         
         # Remove trailing whitespace and check for empty string
         versInfo[i] = versInfo[i].rstrip()
         if versInfo[i] == "":
-            Message("Row " + str(i + 1) + " in the " + shtName + " sheet is missing data. Terminating.")
+            Message(wb._path + ": Row " + str(i + 1) + " in the " + shtName + " sheet is missing data. Terminating.")
             raise Exception
         
         # Output data
@@ -297,7 +368,7 @@ def GetWellInfo(wb, shtName):
         try:
             headerRow = mnems.index("Mnemonic")
         except:
-            Message("Unable to find the row labeled \"LAS Mnemonic\" or \"Mnemonic\" in the first column of the " + shtName + " sheet. Terminating.")
+            Message(wb._path + ": Unable to find the row labeled \"LAS Mnemonic\" or \"Mnemonic\" in the first column of the " + shtName + " sheet. Terminating.")
             raise Exception
     dataStartRow = headerRow + 1
     
@@ -317,7 +388,7 @@ def GetWellInfo(wb, shtName):
         if types[i] == 3:
             values[i] = ConvertToDate(values[i], wb)
             if values[i] == -1:
-                Message("Unrecognized date in row " + str(i + 1) + " of the " + shtName + ". Terminating.")
+                Message(wb._path + ": Unrecognized date in row " + str(i + 1) + " of the " + shtName + ". Terminating.")
                 raise Exception
   
         # Make sure all of the characters that will be in the LAS are ascii
@@ -325,17 +396,17 @@ def GetWellInfo(wb, shtName):
             mnems[i] = str(mnems[i]).encode('ascii')
             values[i] = str(values[i]).encode('ascii')
         except:
-            Message("Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
+            Message(wb._path + ": Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
             raise Exception
         
         # Check for missing fields and values
         mnems[i] = mnems[i].rstrip()
         if mnems[i] == "":
-            Message("Row " + str(i + 1) + " must have a field name (Mnem) in the " + shtName + " sheet.")
+            Message(wb._path + ": Row " + str(i + 1) + " must have a field name (Mnem) in the " + shtName + " sheet.")
             raise Exception
         values[i] = values[i].rstrip()
         if values[i] == "" and i < 15 + dataStartRow:
-            Message("Row " + str(i + 1) + " must have a value in the " + shtName + " sheet.")
+            Message(wb._path + ": Row " + str(i + 1) + " must have a value in the " + shtName + " sheet.")
             raise Exception
 
         # Output the fields
@@ -384,7 +455,7 @@ def GetCurveInfo(wb, shtName):
         try:
             headerRow = mnems.index("Mnemonic")
         except:
-            Message("Unable to find the row labeled \"LAS Mnemonic\" or \"Mnemonic\" in the first column of the " + shtName + " sheet. Terminating.")
+            Message(wb._path + ": Unable to find the row labeled \"LAS Mnemonic\" or \"Mnemonic\" in the first column of the " + shtName + " sheet. Terminating.")
             raise Exception
     dataStartRow = headerRow + 1
     
@@ -407,7 +478,7 @@ def GetCurveInfo(wb, shtName):
             apiCodes[i] = str(apiCodes[i]).encode('ascii')
             curveDescs[i] = str(curveDescs[i]).encode('ascii')
         except:
-            Message("Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
+            Message(wb._path + ": Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
             raise Exception
         
         # If the first row of the data is an example, first data row the starts in the next row
@@ -417,7 +488,7 @@ def GetCurveInfo(wb, shtName):
         # Check for missing fields
         mnems[i] = mnems[i].rstrip()
         if mnems[i] == "" and i == dataStartRow:
-            Message("Row " + str(i + 1) + " needs a value. There must have at least one curve on the " + shtName + " sheet.")
+            Message(wb._path + ": Row " + str(i + 1) + " needs a value. There must have at least one curve on the " + shtName + " sheet.")
             raise Exception
         
         # If the value in the 1st column is not empty and does not contain the words "value" or "units"
@@ -456,7 +527,7 @@ def GetParameterInfo(wb, shtName):
         try:
             headerRow = mnems.index("Mnemonic")
         except:
-            Message("Unable to find the row labeled \"LAS Mnemonic\" or \"Mnemonic\" in the first column of the in the " + shtName + " sheet. Terminating.")
+            Message(wb._path + ": Unable to find the row labeled \"LAS Mnemonic\" or \"Mnemonic\" in the first column of the in the " + shtName + " sheet. Terminating.")
             raise Exception
     dataStartRow = headerRow + 1
     
@@ -479,7 +550,7 @@ def GetParameterInfo(wb, shtName):
             values[i] = str(values[i]).encode('ascii')
             descs[i] = str(descs[i]).encode('ascii')
         except:
-            Message("Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
+            Message(wb._path + ": Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
             raise Exception       
     
         # If the Menm field is not blank output the values
@@ -522,7 +593,7 @@ def GetOtherInfo(wb, shtName):
         try:
             otherInfo[i] = str(otherInfo[i]).encode('ascii')
         except:
-            Message("Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
+            Message(wb._path + ": Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
             raise Exception  
         
         # If the other info field is not blank output the values
@@ -575,13 +646,13 @@ def GetAsciiLogData(wb, shtName):
             try:
                 col[i] = str(col[i]).encode('ascii')
             except:
-                Message("Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
+                Message(wb._path + ": Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
                 raise Exception
             
             # Remove trailing whitespace and check for empty string
             col[i] = col[i].rstrip()
             if col[i] == "":
-                Message("Row " + str(i + 1) + " of the " + shtName + " sheet is missing data. Terminating.")
+                Message(wb._path + ": Row " + str(i + 1) + " of the " + shtName + " sheet is missing data. Terminating.")
                 raise Exception
              
             # Output the values
@@ -593,14 +664,13 @@ def GetAsciiLogData(wb, shtName):
         
     # If the only output was the section header "~A"
     if rowsOutputed == 1:
-        Message("Enter some data in the " + shtName + " sheet.")
+        Message(wb._path + ": Enter some data in the " + shtName + " sheet.")
         raise Exception
 
     return output
 
 # Convert dates (stored in Excel as floats) back to dates
 def ConvertToDate(val, wb):
-
     try:
         if val >= 61:
             year, month, day, hour, minute, second = xlrd.xldate_as_tuple(val, wb.datemode)
@@ -613,6 +683,96 @@ def ConvertToDate(val, wb):
         return -1
     
     return date
+
+# Read the LAS file
+def ReadLAS(inLAS, output):
+    # Open the LAS file for reading
+    f = open(inLAS, 'r')
+    
+    # Read lines into an array
+    lines = f.readlines()
+
+    # Mapping for the field names
+    # Key (left) is from LAS file
+    # Value (right) is from Well Log Content Model
+    mapping = {'STRT': 'TopLoggedInterval_ft',
+               'STOP': 'BottomLoggedInterval_ft',
+               'COMP': '',
+               'WELL': 'DisplayName',
+               'FLD': 'Field',
+               'LOC': 'OtherLocationName',
+               'CNTY': 'County',
+               'STAT': 'State',
+               'CTRY': '',
+               'SRVC': '',
+               'DATE': 'DateTimeLogRun',
+               'UWI': '',
+               'API': 'APINo',
+               'LOGURI': 'LogURI',
+               'LOGTYPE': 'LogTypeName',
+               'WELLTYPE': 'WellType',
+               'LATDEG': 'LatDegree',
+               'LONGDEG': 'LongDegree',
+               'SRS': 'SRS',
+               'LOCUNCERT': 'LocationUncertaintyStatement',
+               'TD': 'DrillerTotalDepth_ft',
+               'ELGL': 'ElevationGL_ft',
+               'LINK': 'RelatedResource',
+               'SOURCE': 'Source',
+               'NOTE': 'Notes'}
+    
+    # Regex Code for the search pattern to find the data values
+    #    \s    Match any whitespace characters (space, tab etc.)
+    #    {2,}  Match the preceeding character 2 or more times
+    #    \S    Match any character NOT whitespace
+    #    *     Match the preceding character 0 or more times
+    #    ?     Match the preceding character occurs 0 or 1 times
+    #    |     Or
+    # So match a string bounded on either side by 2 or more sequential whitespaces
+    # The string itself can contain up to 1 whitespace character separating words
+    # In the example: CNTY.          Rio Arriba          : COUNTY
+    # The match is: Rio Arriba
+    searchPattern = "\s{2,}([\S*|\s?]*)\s{2,}"
+
+    # Create a variable to hold the corresponding WellLogs CM field name and its value
+    data = dict()
+    
+    # Look at each line and see if the line starts with a field which has a mapping
+    for line in lines:
+        for k, v in mapping.iteritems():
+            if line.split('.')[0].strip() == k:
+                units = line.split('.')[1].split(" ")[0]
+                d = re.search(searchPattern, line).group(1).strip()
+                
+                # If the units are in meters convert to feet
+                if units == "M" or units == "m":
+                    try:
+                        d = float(d) * 3.28084
+                    except:
+                        Message("Warning: It looks like the units of " + d + " for the " + k + " field are in Meters but conversion to feet failed.")
+                        Message("This problem may need to be correctly manually.")
+                
+                # If a data item was found and the field name has a mapping
+                if d != "" and mapping[k] != "":
+                    data[v] = d
+
+    return data
+
+# Write the data from the LAS file as a row in the WellLogs Content Model
+def WriteWellLogsCM(data, fields, row, sht):
+    # For each field in the WellLogs CM write the data if the field name matches
+    # the field name for which data was found in the LAS file
+    for i, field in enumerate(fields):
+        for d in data:
+            if field == d:
+                sht.write(row, i, data[d])
+
+    return
+
+# Write a message in the message box
+def Message(message):
+    textFrame.insert(END, message + "\n")
+    return
 
 if __name__ == "__main__":
     main()
