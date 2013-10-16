@@ -63,6 +63,7 @@ from xlutils.copy import copy
  
 import Tkinter, tkFileDialog
 from Tkinter import *
+import tkMessageBox
 
 # Main function for the Well Log Data Converter Tool
 # Set up the user interface
@@ -91,6 +92,8 @@ def main(argv=None):
     R3.pack(anchor = W)
     R4 = Radiobutton(labelframe, text = "Convert All Files in a Folder", variable = cOpt, value = 2)
     R4.pack(anchor = W)
+    
+    # Create the Start Conversion button to start the conversion
     B = Tkinter.Button(root, text = "Start Conversion!", command = GetFiles)
     B.pack()
 
@@ -242,11 +245,16 @@ def Convert(files):
     if cType.get() == 2:
         try:
             # Save the output file
-            w.save(path + "\\" + "WellLogs.xls")
-            Message("Saved as WellLogs.xls in " + path)
+            if os.path.isfile(path + "\\" + "WellLogs.xls"):
+                res = tkMessageBox.askokcancel("Overwrite", "WellLogs.xls already exists. Overwrite?")
+                if res:
+                    w.save(path + "\\" + "WellLogs.xls")
+                    Message("WellLogs.xls saved in " + path)
+                else:
+                    Message("WellLogs.xls not saved.")
         except:
-            Message("Unable to Save WellLogs.xls. If it is already open, close it first.")
-         
+            Message("Unable to save WellLogs.xls. If it is already open, close it first.")
+
     return
 
 # Exit the program
@@ -382,7 +390,7 @@ def GetWellInfo(wb, shtName):
     rowsOutputed = 1
     
     # For each item in the list representing the first column
-    for i in range(dataStartRow, len(mnems)):  
+    for i in range(dataStartRow, len(mnems)):
         
         # If the type of the cell is 3 a date type is indicated
         if types[i] == 3:
@@ -390,7 +398,15 @@ def GetWellInfo(wb, shtName):
             if values[i] == -1:
                 Message(wb._path + ": Unrecognized date in row " + str(i + 1) + " of the " + shtName + ". Terminating.")
                 raise Exception
-  
+
+        # Remove demical and trailing zeros that were added on Excel import
+        try:
+            values[i] = float(values[i])
+            if values[i] == int(values[i]):
+                values[i] = '%d'%values[i]
+        except:
+            pass      
+        
         # Make sure all of the characters that will be in the LAS are ascii
         try:
             mnems[i] = str(mnems[i]).encode('ascii')
@@ -398,16 +414,25 @@ def GetWellInfo(wb, shtName):
         except:
             Message(wb._path + ": Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
             raise Exception
-        
+
         # Check for missing fields and values
         mnems[i] = mnems[i].rstrip()
         if mnems[i] == "":
             Message(wb._path + ": Row " + str(i + 1) + " must have a field name (Mnem) in the " + shtName + " sheet.")
             raise Exception
         values[i] = values[i].rstrip()
+
+        # First 15 fields are required so fill in placeholder data if empty
         if values[i] == "" and i < 15 + dataStartRow:
-            Message(wb._path + ": Row " + str(i + 1) + " must have a value in the " + shtName + " sheet.")
-            raise Exception
+            # First 4 fields (STRT, STOP, STEP, NULL) should have the value '-9999' if no data
+            if i < 4 + dataStartRow:
+                values[i] = '-9999'
+            # The rest of the fields should have the value 'Missing' if no data, except for date (see below)
+            else:
+                values[i] = 'Missing'
+            # Thirteenth field (DATE) should have the value 1/1/1900 00:00, if no data
+            if i == 13 + dataStartRow - 1:
+                values[i] = datetime.datetime(1900, 1, 1, 0, 0, 0)
 
         # Output the fields
         output += mnems[i]
@@ -418,7 +443,7 @@ def GetWellInfo(wb, shtName):
         
         # Output the values
         output += "          "
-        output += values[i]
+        output += str(values[i])
         output += "          "
         output += ":"
         output += " "
@@ -470,6 +495,14 @@ def GetCurveInfo(wb, shtName):
     
     # For each item in the list representing the first column
     for i in range(dataStartRow, len(mnems)):
+
+        # Remove demical and trailing zeros that were added on Excel import
+        try:
+            apiCodes[i] = float(apiCodes[i])
+            if apiCodes[i] == int(apiCodes[i]):
+                apiCodes[i] = '%d'%apiCodes[i]
+        except:
+            pass   
 
         # Make sure all of the characters that will be in the LAS are ascii
         try:
@@ -542,6 +575,14 @@ def GetParameterInfo(wb, shtName):
     
     # For each item in the list representing the first column
     for i in range(dataStartRow, len(mnems)):
+        
+        # Remove demical and trailing zeros that were added on Excel import
+        try:
+            values[i] = float(values[i])
+            if values[i] == int(values[i]):
+                values[i] = '%d'%values[i]
+        except:
+            pass
         
         # Make sure all of the characters that will be in the LAS are ascii
         try:
@@ -642,6 +683,14 @@ def GetAsciiLogData(wb, shtName):
         # For each col
         for col in cols:
 
+            # Remove demical and trailing zeros that were added on Excel import
+            try:
+                col[i] = float(col[i])
+                if col[i] == int(col[i]):
+                    col[i] = '%d'%col[i]
+            except:
+                pass
+
             # Make sure all of the characters that will be in the LAS are ascii
             try:
                 col[i] = str(col[i]).encode('ascii')
@@ -720,7 +769,7 @@ def ReadLAS(inLAS, output):
                'LINK': 'RelatedResource',
                'SOURCE': 'Source',
                'NOTE': 'Notes'}
-    
+
     # Regex Code for the search pattern to find the data values
     #    \s    Match any whitespace characters (space, tab etc.)
     #    {2,}  Match the preceeding character 2 or more times
