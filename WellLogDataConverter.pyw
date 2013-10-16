@@ -659,10 +659,11 @@ def GetAsciiLogData(wb, shtName):
     headersRow = 2
     
     # Figure out the last column that is supposed to have data
-    row = sht.row_values(2)
+    # Look at the first data row and find the last column with data
+    row = sht.row_values(headersRow + 1)
     lastCol = len(row) - 1
     for i in range(lastCol, 0, -1):
-        if "value" in str(row[i]) and "units" in str(row[i]):
+        if str(row[i]).strip() == "":
             lastCol = lastCol - 1
     del i
     

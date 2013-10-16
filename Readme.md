@@ -25,3 +25,24 @@ This python script offers two different conversions for well log data:
 - Output Locations:
 -- The created LAS file(s) are written to the same folder as the original Excel file(s).
 -- The created WellLogs Content Model Excel file (WellLogs.xls) is written to the same folder as the original LAS file(s).
+
+#### Troubleshooting:
+- Make sure the dependencies for the tool are installed properly.
+
+After Python is installed it needs to be added to the system's Environment Variables (Win7 Directions):
+1.	Go to the Start Menu
+2.	Right Click "Computer"
+3.	Select "Properties"
+4.	A dialog should pop up with a link on the left called "Advanced system settings". Click it.
+5.	In the System Properties dialog, click the button called "Environment Variables".
+6.	In the Environment Variables dialog look for "Path" under the System Variables window.
+7.	Add "C:\Python26\ArcGIS10.0\" (or wherever python.exe is) to the end of it. The semicolon is the path separator on windows.
+8.	Click Ok and close the dialogs.
+
+Installing the xlrd and xlutils modules (Win7 Directions):
+1. Download the modules from the links above.
+2. Completely unpack the modules.
+3. Hold down Shift and right click on the folder which setup.py is located.
+4. Click ‘Open command window here’.
+5. Type ‘python setup.py install’ in the command window.
+6. Do this for each module.
