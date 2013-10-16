@@ -399,7 +399,7 @@ def GetWellInfo(wb, shtName):
                 Message(wb._path + ": Unrecognized date in row " + str(i + 1) + " of the " + shtName + ". Terminating.")
                 raise Exception
 
-        # Remove demical and trailing zeros that were added on Excel import
+        # Remove decimal and trailing zeros that were added on Excel import
         try:
             values[i] = float(values[i])
             if values[i] == int(values[i]):
@@ -496,7 +496,7 @@ def GetCurveInfo(wb, shtName):
     # For each item in the list representing the first column
     for i in range(dataStartRow, len(mnems)):
 
-        # Remove demical and trailing zeros that were added on Excel import
+        # Remove decimal and trailing zeros that were added on Excel import
         try:
             apiCodes[i] = float(apiCodes[i])
             if apiCodes[i] == int(apiCodes[i]):
@@ -576,7 +576,7 @@ def GetParameterInfo(wb, shtName):
     # For each item in the list representing the first column
     for i in range(dataStartRow, len(mnems)):
         
-        # Remove demical and trailing zeros that were added on Excel import
+        # Remove decimal and trailing zeros that were added on Excel import
         try:
             values[i] = float(values[i])
             if values[i] == int(values[i]):
@@ -683,7 +683,7 @@ def GetAsciiLogData(wb, shtName):
         # For each col
         for col in cols:
 
-            # Remove demical and trailing zeros that were added on Excel import
+            # Remove decimal and trailing zeros that were added on Excel import
             try:
                 col[i] = float(col[i])
                 if col[i] == int(col[i]):
