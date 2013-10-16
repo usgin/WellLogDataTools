@@ -706,7 +706,7 @@ def ReadLAS(inLAS, output):
                'CTRY': '',
                'SRVC': '',
                'DATE': 'DateTimeLogRun',
-               'UWI': '',
+               'UWI': 'WellBoreURI',
                'API': 'APINo',
                'LOGURI': 'LogURI',
                'LOGTYPE': 'LogTypeName',
