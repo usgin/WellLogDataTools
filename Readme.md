@@ -30,14 +30,14 @@ This python script offers two different conversions for well log data:
 - Make sure the dependencies for the tool are installed properly.
 
 After Python is installed it needs to be added to the system's Environment Variables (Win7 Directions):
-1.	Go to the Start Menu
-2.	Right Click "Computer"
-3.	Select "Properties"
-4.	A dialog should pop up with a link on the left called "Advanced system settings". Click it.
-5.	In the System Properties dialog, click the button called "Environment Variables".
-6.	In the Environment Variables dialog look for "Path" under the System Variables window.
-7.	Add "C:\Python26\ArcGIS10.0\" (or wherever python.exe is) to the end of it. The semicolon is the path separator on windows.
-8.	Click Ok and close the dialogs.
+1. Go to the Start Menu.
+2. Right Click "Computer".
+3. Select "Properties".
+4. A dialog should pop up with a link on the left called "Advanced system settings". Click it.
+5. In the System Properties dialog, click the button called "Environment Variables".
+6. In the Environment Variables dialog look for "Path" under the System Variables window.
+7. Add "C:\Python26\ArcGIS10.0\" (or wherever python.exe is) to the end of it. The semicolon is the path separator on windows.
+8. Click Ok and close the dialogs.
 
 Installing the xlrd and xlutils modules (Win7 Directions):
 1. Download the modules from the links above.

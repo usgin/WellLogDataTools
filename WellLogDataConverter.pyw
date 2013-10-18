@@ -252,6 +252,9 @@ def Convert(files):
                     Message("WellLogs.xls saved in " + path)
                 else:
                     Message("WellLogs.xls not saved.")
+            else:
+                w.save(path + "\\" + "WellLogs.xls")
+                Message("WellLogs.xls saved in " + path) 
         except:
             Message("Unable to save WellLogs.xls. If it is already open, close it first.")
 
