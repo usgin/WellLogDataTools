@@ -344,7 +344,7 @@ def GetVersionInfo(wb, shtName):
             raise Exception  
         
         # Remove trailing whitespace and check for empty string
-        versInfo[i] = versInfo[i].rstrip()
+        versInfo[i] = versInfo[i].strip()
         if versInfo[i] == "":
             Message(wb._path + ": Row " + str(i + 1) + " in the " + shtName + " sheet is missing data. Terminating.")
             raise Exception
@@ -360,7 +360,7 @@ def GetWellInfo(wb, shtName):
 
     # Get the sheet from the Excel file
     sht = wb.sheet_by_name(shtName)
-    
+
     # Read the first and second columns of the Excel file
     mnems = sht.col_values(0)
     values = sht.col_values(1)
@@ -382,7 +382,7 @@ def GetWellInfo(wb, shtName):
             Message(wb._path + ": Unable to find the row labeled \"LAS Mnemonic\" or \"Mnemonic\" in the first column of the " + shtName + " sheet. Terminating.")
             raise Exception
     dataStartRow = headerRow + 1
-    
+
     # Output the headers
     output = "~Well Information Section"
     output += "\n"
@@ -391,15 +391,15 @@ def GetWellInfo(wb, shtName):
     output += "#--------     --------------   ---------------------"
     output += "\n"
     rowsOutputed = 1
-    
+
     # For each item in the list representing the first column
     for i in range(dataStartRow, len(mnems)):
-        
-        # If the type of the cell is 3 a date type is indicated
-        if types[i] == 3:
+
+        # If the field represents a date format it as a date
+        if mnems[i] == "DATE" or mnems[i] == "Date" or types[i] == 3:
             values[i] = ConvertToDate(values[i], wb)
             if values[i] == -1:
-                Message(wb._path + ": Unrecognized date in row " + str(i + 1) + " of the " + shtName + ". Terminating.")
+                Message(wb._path + ": Unrecognized date in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
                 raise Exception
 
         # Remove decimal and trailing zeros that were added on Excel import
@@ -419,11 +419,11 @@ def GetWellInfo(wb, shtName):
             raise Exception
 
         # Check for missing fields and values
-        mnems[i] = mnems[i].rstrip()
+        mnems[i] = mnems[i].strip()
         if mnems[i] == "":
             Message(wb._path + ": Row " + str(i + 1) + " must have a field name (Mnem) in the " + shtName + " sheet.")
             raise Exception
-        values[i] = values[i].rstrip()
+        values[i] = values[i].strip()
 
         # First 15 fields are required so fill in placeholder data if empty
         if values[i] == "" and i < 15 + dataStartRow:
@@ -438,25 +438,28 @@ def GetWellInfo(wb, shtName):
                 values[i] = datetime.datetime(1900, 1, 1, 0, 0, 0)
 
         # Output the fields
-        output += mnems[i]
-        
-        # Each Mnem value must be followed by a period so insert one if not already there
-        if "." not in mnems[i]:
+        if "." in mnems[i]:
+            output += mnems[i].split('.')[0].strip()
             output += "."
-        
+            # Output the units
+            output += mnems[i].split('.')[1].strip()
+        else:
+            output += mnems[i].strip()
+            output += "."
+
         # Output the values
         output += "          "
-        output += str(values[i])
+        output += str(values[i]).strip()
         output += "          "
         output += ":"
         output += " "
         
         # Output the corresponding description
         if i - dataStartRow < len(desc):
-            output += desc[i - dataStartRow]
+            output += desc[i - dataStartRow].strip()
         else:
             output += ": "  
-            output += mnems[i]
+            output += mnems[i].strip()
             
         output += "\n"
         rowsOutputed = rowsOutputed + 1
@@ -522,7 +525,7 @@ def GetCurveInfo(wb, shtName):
             dataStartRow = dataStartRow + 1
         
         # Check for missing fields
-        mnems[i] = mnems[i].rstrip()
+        mnems[i] = mnems[i].strip()
         if mnems[i] == "" and i == dataStartRow:
             Message(wb._path + ": Row " + str(i + 1) + " needs a value. There must have at least one curve on the " + shtName + " sheet.")
             raise Exception
@@ -531,14 +534,14 @@ def GetCurveInfo(wb, shtName):
         # And if the value in the 5th column does not have the words "example"
         if mnems[i] != "" and "value" not in mnems[i] and "units" not in units[i] and "example" not in str(exs[i]):
             # Output the values
-            output += mnems[i]
-            output += "  ."
-            output += units[i]
+            output += mnems[i].strip()
+            output += "."
+            output += units[i].strip()
             output += "          "
-            output += apiCodes[i]  
+            output += apiCodes[i].strip()
             output += "          "
             output += ": " + str(rowsOutputed) + " "
-            output += curveDescs[i] 
+            output += curveDescs[i].strip()
             output += "\n"
             rowsOutputed = rowsOutputed + 1  
     
@@ -598,16 +601,16 @@ def GetParameterInfo(wb, shtName):
             raise Exception       
     
         # If the Menm field is not blank output the values
-        mnems[i] = mnems[i].rstrip()
+        mnems[i] = mnems[i].strip()
         if mnems[i] != "":
             output += mnems[i]
-            output += "  ."
-            output += units[i]
+            output += "."
+            output += units[i].strip()
             output += "          "
-            output += values[i]  
+            output += values[i].strip()
             output += "          "
             output += ": "
-            output += descs[i] 
+            output += descs[i].strip()
             output += "\n"
             rowsOutputed = rowsOutputed + 1
         
@@ -642,7 +645,7 @@ def GetOtherInfo(wb, shtName):
         
         # If the other info field is not blank output the values
         if otherInfo[i] != "":   
-            output += otherInfo[i]
+            output += otherInfo[i].strip()
             output += "\n"
             rowsOutputed = rowsOutputed + 1
     
@@ -702,8 +705,8 @@ def GetAsciiLogData(wb, shtName):
                 Message(wb._path + ": Non-ascii character in row " + str(i + 1) + " of the " + shtName + " sheet. Terminating.")
                 raise Exception
             
-            # Remove trailing whitespace and check for empty string
-            col[i] = col[i].rstrip()
+            # Remove whitespace and check for empty string
+            col[i] = col[i].strip()
             if col[i] == "":
                 Message(wb._path + ": Row " + str(i + 1) + " of the " + shtName + " sheet is missing data. Terminating.")
                 raise Exception
@@ -741,7 +744,7 @@ def ConvertToDate(val, wb):
 def ReadLAS(inLAS, output):
     # Open the LAS file for reading
     f = open(inLAS, 'r')
-    
+
     # Read lines into an array
     lines = f.readlines()
 
@@ -794,15 +797,15 @@ def ReadLAS(inLAS, output):
     for line in lines:
         for k, v in mapping.iteritems():
             if line.split('.')[0].strip() == k:
-                units = line.split('.')[1].split(" ")[0]
+                units = line.split('.')[1].strip().split(" ")[0]
                 d = re.search(searchPattern, line).group(1).strip()
                 
                 # If the units are in meters convert to feet
-                if units == "M" or units == "m":
+                if units == "M" or units == "m" and d!="":
                     try:
                         d = float(d) * 3.28084
                     except:
-                        Message("Warning: It looks like the units of " + d + " for the " + k + " field are in Meters but conversion to feet failed.")
+                        Message(os.path.basename(inLAS) + ": Warning! It looks like the units of " + d + " for the " + k + " field are in Meters but conversion to feet failed.")
                         Message("This problem may need to be correctly manually.")
                 
                 # If a data item was found and the field name has a mapping
