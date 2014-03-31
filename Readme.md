@@ -30,6 +30,7 @@ This python script offers two different conversions for well log data:
 - Make sure the dependencies for the tool are installed properly.
 
 After Python is installed it needs to be added to the system's Environment Variables (Win7 Directions):
+
 1. Go to the Start Menu.
 2. Right Click "Computer".
 3. Select "Properties".
@@ -40,6 +41,7 @@ After Python is installed it needs to be added to the system's Environment Varia
 8. Click Ok and close the dialogs.
 
 Installing the xlrd and xlutils modules (Win7 Directions):
+
 1. Download the modules from the links above.
 2. Completely unpack the modules.
 3. Hold down Shift and right click on the folder which setup.py is located.
