@@ -14,6 +14,7 @@ This python script offers two different conversions for well log data:
 
 #### WellLogDataConverter Tool Requirements:
 - [Python 2.6x] (http://www.python.org/)
+- [pip] (http://pip.readthedocs.org/en/latest/installing.html)
 - [xlrd] (http://pypi.python.org/pypi/xlrd)
 - [xlutils] (http://pypi.python.org/pypi/xlutils)
 
